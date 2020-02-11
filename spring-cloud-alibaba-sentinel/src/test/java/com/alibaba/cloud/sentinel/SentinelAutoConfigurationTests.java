@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,24 +16,32 @@
 
 package com.alibaba.cloud.sentinel;
 
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.mock;
-import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
-
 import java.util.Arrays;
 import java.util.Map;
 
+import com.alibaba.cloud.sentinel.annotation.SentinelRestTemplate;
+import com.alibaba.cloud.sentinel.custom.SentinelAutoConfiguration;
+import com.alibaba.cloud.sentinel.custom.SentinelBeanPostProcessor;
+import com.alibaba.cloud.sentinel.endpoint.SentinelEndpoint;
+import com.alibaba.cloud.sentinel.rest.SentinelClientHttpResponse;
+import com.alibaba.csp.sentinel.config.SentinelConfig;
+import com.alibaba.csp.sentinel.log.LogBase;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.slots.block.RuleConstant;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRuleManager;
+import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
+import com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager;
+import com.alibaba.csp.sentinel.transport.config.TransportConfig;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpRequest;
@@ -45,48 +53,35 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import com.alibaba.cloud.sentinel.annotation.SentinelRestTemplate;
-import com.alibaba.cloud.sentinel.custom.SentinelAutoConfiguration;
-import com.alibaba.cloud.sentinel.custom.SentinelBeanPostProcessor;
-import com.alibaba.cloud.sentinel.endpoint.SentinelEndpoint;
-import com.alibaba.cloud.sentinel.rest.SentinelClientHttpResponse;
-import com.alibaba.csp.sentinel.adapter.servlet.config.WebServletConfig;
-import com.alibaba.csp.sentinel.config.SentinelConfig;
-import com.alibaba.csp.sentinel.log.LogBase;
-import com.alibaba.csp.sentinel.slots.block.BlockException;
-import com.alibaba.csp.sentinel.slots.block.RuleConstant;
-import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
-import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRuleManager;
-import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
-import com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager;
-import com.alibaba.csp.sentinel.transport.config.TransportConfig;
+import static com.alibaba.cloud.sentinel.SentinelConstants.BLOCK_PAGE_URL_CONF_KEY;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 /**
  * @author <a href="mailto:fangjian0423@gmail.com">Jim</a>
  * @author jiashuai.xie
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = {
-		SentinelAutoConfigurationTests.TestConfig.class }, properties = {
-				"spring.cloud.sentinel.filter.order=123",
+@SpringBootTest(classes = { SentinelAutoConfigurationTests.TestConfig.class },
+		properties = { "spring.cloud.sentinel.filter.order=123",
 				"spring.cloud.sentinel.filter.urlPatterns=/*,/test",
 				"spring.cloud.sentinel.metric.fileSingleSize=9999",
 				"spring.cloud.sentinel.metric.fileTotalCount=100",
-				"spring.cloud.sentinel.servlet.blockPage=/error",
+				"spring.cloud.sentinel.blockPage=/error",
 				"spring.cloud.sentinel.flow.coldFactor=3",
 				"spring.cloud.sentinel.eager=true",
 				"spring.cloud.sentinel.log.switchPid=true",
 				"spring.cloud.sentinel.transport.dashboard=http://localhost:8080",
 				"spring.cloud.sentinel.transport.port=9999",
 				"spring.cloud.sentinel.transport.clientIp=1.1.1.1",
-				"spring.cloud.sentinel.transport.heartbeatIntervalMs=20000" }, webEnvironment = RANDOM_PORT)
+				"spring.cloud.sentinel.transport.heartbeatIntervalMs=20000" },
+		webEnvironment = RANDOM_PORT)
 public class SentinelAutoConfigurationTests {
 
 	@Autowired
 	private SentinelProperties sentinelProperties;
-
-	@Autowired
-	private FilterRegistrationBean filterRegistrationBean;
 
 	@Autowired
 	private SentinelBeanPostProcessor sentinelBeanPostProcessor;
@@ -131,10 +126,7 @@ public class SentinelAutoConfigurationTests {
 
 	@Test
 	public void contextLoads() throws Exception {
-		assertNotNull("FilterRegistrationBean was not created", filterRegistrationBean);
-		assertNotNull("SentinelProperties was not created", sentinelProperties);
-		assertNotNull("SentinelBeanPostProcessor was not created",
-				sentinelBeanPostProcessor);
+		assertThat(sentinelBeanPostProcessor).isNotNull();
 
 		checkSentinelLog();
 		checkSentinelEager();
@@ -148,139 +140,104 @@ public class SentinelAutoConfigurationTests {
 	private void checkEndpoint() {
 		SentinelEndpoint sentinelEndpoint = new SentinelEndpoint(sentinelProperties);
 		Map<String, Object> map = sentinelEndpoint.invoke();
-		assertEquals("Endpoint Sentinel log pid was wrong", true, map.get("logUsePid"));
-		assertEquals("Endpoint Sentinel transport console server was wrong",
-				"http://localhost:8080", map.get("consoleServer"));
-		assertEquals("Endpoint Sentinel transport port was wrong", "9999",
-				map.get("clientPort"));
-		assertEquals("Endpoint Sentinel transport heartbeatIntervalMs was wrong", 20000l,
-				map.get("heartbeatIntervalMs"));
-		assertEquals("Endpoint Sentinel transport clientIp was wrong", "1.1.1.1",
-				map.get("clientIp"));
-		assertEquals("Endpoint Sentinel metric file size was wrong", 9999l,
-				map.get("metricsFileSize"));
-		assertEquals("Endpoint Sentinel metric file count was wrong", 100,
-				map.get("totalMetricsFileCount"));
-		assertEquals("Endpoint Sentinel metric file charset was wrong", "UTF-8",
-				map.get("metricsFileCharset"));
-		assertEquals("Endpoint Sentinel block page was wrong", "/error",
-				map.get("blockPage"));
+
+		assertThat(map.get("logUsePid")).isEqualTo(Boolean.TRUE);
+		assertThat(map.get("consoleServer")).isEqualTo("http://localhost:8080");
+		assertThat(map.get("clientPort")).isEqualTo("9999");
+		assertThat(map.get("heartbeatIntervalMs")).isEqualTo(20000L);
+		assertThat(map.get("clientIp")).isEqualTo("1.1.1.1");
+		assertThat(map.get("metricsFileSize")).isEqualTo(9999L);
+		assertThat(map.get("totalMetricsFileCount")).isEqualTo(100);
+		assertThat(map.get("metricsFileCharset")).isEqualTo("UTF-8");
+		assertThat(map.get("blockPage")).isEqualTo("/error");
 	}
 
 	private void checkSentinelFilter() {
-		assertEquals("SentinelProperties filter order was wrong", 123,
-				sentinelProperties.getFilter().getOrder());
-		assertEquals("SentinelProperties filter url pattern size was wrong", 2,
-				sentinelProperties.getFilter().getUrlPatterns().size());
-		assertEquals("SentinelProperties filter url pattern item was wrong", "/*",
-				sentinelProperties.getFilter().getUrlPatterns().get(0));
-		assertEquals("SentinelProperties filter url pattern item was wrong", "/test",
-				sentinelProperties.getFilter().getUrlPatterns().get(1));
+		assertThat(sentinelProperties.getFilter().getOrder()).isEqualTo(123);
+		assertThat(sentinelProperties.getFilter().getUrlPatterns().size()).isEqualTo(2);
+		assertThat(sentinelProperties.getFilter().getUrlPatterns().get(0))
+				.isEqualTo("/*");
+		assertThat(sentinelProperties.getFilter().getUrlPatterns().get(1))
+				.isEqualTo("/test");
 	}
 
 	private void checkSentinelMetric() {
-		assertEquals("SentinelProperties metric charset was wrong", "UTF-8",
-				sentinelProperties.getMetric().getCharset());
-		assertEquals("SentinelProperties metric file single size was wrong", "9999",
-				sentinelProperties.getMetric().getFileSingleSize());
-		assertEquals("SentinelProperties metric file total count was wrong", "100",
-				sentinelProperties.getMetric().getFileTotalCount());
+		assertThat(sentinelProperties.getMetric().getCharset()).isEqualTo("UTF-8");
+		assertThat(sentinelProperties.getMetric().getFileSingleSize()).isEqualTo("9999");
+		assertThat(sentinelProperties.getMetric().getFileTotalCount()).isEqualTo("100");
 	}
 
 	private void checkSentinelColdFactor() {
-		assertEquals("SentinelProperties coldFactor was wrong", "3",
-				sentinelProperties.getFlow().getColdFactor());
+		assertThat(sentinelProperties.getFlow().getColdFactor()).isEqualTo("3");
 	}
 
 	private void checkSentinelTransport() {
-		assertEquals("SentinelProperties transport port was wrong", "9999",
-				sentinelProperties.getTransport().getPort());
-		assertEquals("SentinelProperties transport dashboard was wrong",
-				"http://localhost:8080",
-				sentinelProperties.getTransport().getDashboard());
-		assertEquals("SentinelProperties transport clientIp was wrong", "1.1.1.1",
-				sentinelProperties.getTransport().getClientIp());
-		assertEquals("SentinelProperties transport heartbeatIntervalMs was wrong",
-				"20000", sentinelProperties.getTransport().getHeartbeatIntervalMs());
+		assertThat(sentinelProperties.getTransport().getPort()).isEqualTo("9999");
+		assertThat(sentinelProperties.getTransport().getDashboard())
+				.isEqualTo("http://localhost:8080");
+		assertThat(sentinelProperties.getTransport().getClientIp()).isEqualTo("1.1.1.1");
+		assertThat(sentinelProperties.getTransport().getHeartbeatIntervalMs())
+				.isEqualTo("20000");
 	}
 
 	private void checkSentinelEager() {
-		assertEquals("SentinelProperties eager was wrong", true,
-				sentinelProperties.isEager());
+		assertThat(sentinelProperties.isEager()).isEqualTo(true);
 	}
 
 	private void checkSentinelLog() {
-		assertEquals("SentinelProperties log file pid was wrong", true,
-				sentinelProperties.getLog().isSwitchPid());
-	}
-
-	@Test
-	public void testFilter() {
-		assertEquals("Sentinel Filter order was wrong", filterRegistrationBean.getOrder(),
-				123);
-		assertEquals("Sentinel Filter url-pattern was wrong",
-				filterRegistrationBean.getUrlPatterns().size(), 2);
+		assertThat(sentinelProperties.getLog().isSwitchPid()).isEqualTo(true);
 	}
 
 	@Test
 	public void testSentinelSystemProperties() {
-		assertEquals("Sentinel log pid was wrong", true, LogBase.isLogNameUsePid());
-		assertEquals("Sentinel transport console server was wrong",
-				"http://localhost:8080", TransportConfig.getConsoleServer());
-		assertEquals("Sentinel transport port was wrong", "9999",
-				TransportConfig.getPort());
-		assertEquals("Sentinel transport heartbeatIntervalMs was wrong", 20000l,
-				TransportConfig.getHeartbeatIntervalMs().longValue());
-		assertEquals("Sentinel transport clientIp was wrong", "1.1.1.1",
-				TransportConfig.getHeartbeatClientIp());
-		assertEquals("Sentinel metric file size was wrong", 9999,
-				SentinelConfig.singleMetricFileSize());
-		assertEquals("Sentinel metric file count was wrong", 100,
-				SentinelConfig.totalMetricFileCount());
-		assertEquals("Sentinel metric file charset was wrong", "UTF-8",
-				SentinelConfig.charset());
-		assertEquals("Sentinel block page was wrong", "/error",
-				WebServletConfig.getBlockPage());
+		assertThat(LogBase.isLogNameUsePid()).isEqualTo(true);
+		assertThat(TransportConfig.getConsoleServer()).isEqualTo("http://localhost:8080");
+		assertThat(TransportConfig.getPort()).isEqualTo("9999");
+		assertThat(TransportConfig.getHeartbeatIntervalMs().longValue())
+				.isEqualTo(20000L);
+		assertThat(TransportConfig.getHeartbeatClientIp()).isEqualTo("1.1.1.1");
+		assertThat(SentinelConfig.singleMetricFileSize()).isEqualTo(9999);
+		assertThat(SentinelConfig.totalMetricFileCount()).isEqualTo(100);
+		assertThat(SentinelConfig.charset()).isEqualTo("UTF-8");
+		assertThat(SentinelConfig.getConfig(BLOCK_PAGE_URL_CONF_KEY)).isEqualTo("/error");
 	}
 
 	@Test
 	public void testFlowRestTemplate() {
-		assertEquals("RestTemplate interceptors size was wrong", 2,
-				restTemplate.getInterceptors().size());
-		assertEquals("RestTemplateWithBlockClass interceptors size was wrong", 1,
-				restTemplateWithBlockClass.getInterceptors().size());
+
+		assertThat(restTemplate.getInterceptors().size()).isEqualTo(2);
+		assertThat(restTemplateWithBlockClass.getInterceptors().size()).isEqualTo(1);
+
 		ResponseEntity responseEntityBlock = restTemplateWithBlockClass
 				.getForEntity(flowUrl, String.class);
-		assertEquals("RestTemplateWithBlockClass Sentinel Block Message was wrong",
-				"Oops", responseEntityBlock.getBody());
-		assertEquals(
-				"RestTemplateWithBlockClass Sentinel Block Http Status Code was wrong",
-				HttpStatus.OK, responseEntityBlock.getStatusCode());
+
+		assertThat(responseEntityBlock.getBody()).isEqualTo("Oops");
+		assertThat(responseEntityBlock.getStatusCode()).isEqualTo(HttpStatus.OK);
+
 		ResponseEntity responseEntityRaw = restTemplate.getForEntity(flowUrl,
 				String.class);
-		assertEquals("RestTemplate Sentinel Block Message was wrong",
-				"RestTemplate request block by sentinel", responseEntityRaw.getBody());
-		assertEquals("RestTemplate Sentinel Block Http Status Code was wrong",
-				HttpStatus.OK, responseEntityRaw.getStatusCode());
+
+		assertThat(responseEntityRaw.getBody())
+				.isEqualTo("RestTemplate request block by sentinel");
+		assertThat(responseEntityRaw.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
 	@Test
 	public void testNormalRestTemplate() {
-		assertEquals("RestTemplateWithoutBlockClass interceptors size was wrong", 0,
-				restTemplateWithoutBlockClass.getInterceptors().size());
-		assertThatExceptionOfType(RestClientException.class).isThrownBy(() -> {
+		assertThat(restTemplateWithoutBlockClass.getInterceptors().size()).isEqualTo(0);
+
+		assertThatThrownBy(() -> {
 			restTemplateWithoutBlockClass.getForEntity(flowUrl, String.class);
-		});
+		}).isInstanceOf(RestClientException.class);
 	}
 
 	@Test
 	public void testFallbackRestTemplate() {
 		ResponseEntity responseEntity = restTemplateWithFallbackClass
 				.getForEntity(degradeUrl, String.class);
-		assertEquals("RestTemplateWithFallbackClass Sentinel Message was wrong",
-				"Oops fallback", responseEntity.getBody());
-		assertEquals("RestTemplateWithFallbackClass Sentinel Http Status Code was wrong",
-				HttpStatus.OK, responseEntity.getStatusCode());
+
+		assertThat(responseEntity.getBody()).isEqualTo("Oops fallback");
+		assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
 	@Configuration
@@ -295,13 +252,15 @@ public class SentinelAutoConfigurationTests {
 		}
 
 		@Bean
-		@SentinelRestTemplate(blockHandlerClass = ExceptionUtil.class, blockHandler = "handleException")
+		@SentinelRestTemplate(blockHandlerClass = ExceptionUtil.class,
+				blockHandler = "handleException")
 		RestTemplate restTemplateWithBlockClass() {
 			return new RestTemplate();
 		}
 
 		@Bean
-		@SentinelRestTemplate(fallbackClass = ExceptionUtil.class, fallback = "fallbackException")
+		@SentinelRestTemplate(fallbackClass = ExceptionUtil.class,
+				fallback = "fallbackException")
 		RestTemplate restTemplateWithFallbackClass() {
 			return new RestTemplate();
 		}
@@ -314,6 +273,7 @@ public class SentinelAutoConfigurationTests {
 	}
 
 	public static class ExceptionUtil {
+
 		public static SentinelClientHttpResponse handleException(HttpRequest request,
 				byte[] body, ClientHttpRequestExecution execution, BlockException ex) {
 			System.out.println("Oops: " + ex.getClass().getCanonicalName());
@@ -325,6 +285,7 @@ public class SentinelAutoConfigurationTests {
 			System.out.println("Oops: " + ex.getClass().getCanonicalName());
 			return new SentinelClientHttpResponse("Oops fallback");
 		}
+
 	}
 
 	@Configuration
@@ -332,6 +293,7 @@ public class SentinelAutoConfigurationTests {
 	@ImportAutoConfiguration({ SentinelAutoConfiguration.class,
 			SentinelWebAutoConfiguration.class, SentinelTestConfiguration.class })
 	public static class TestConfig {
+
 	}
 
 }

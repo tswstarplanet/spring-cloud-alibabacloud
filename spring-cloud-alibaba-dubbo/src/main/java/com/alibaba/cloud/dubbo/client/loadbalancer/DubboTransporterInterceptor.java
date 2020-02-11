@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright 2013-2018 the original author or authors.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,15 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.cloud.dubbo.client.loadbalancer;
 
-import static org.springframework.web.util.UriComponentsBuilder.fromUri;
+package com.alibaba.cloud.dubbo.client.loadbalancer;
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
+import com.alibaba.cloud.dubbo.http.MutableHttpServerRequest;
+import com.alibaba.cloud.dubbo.metadata.DubboRestServiceMetadata;
+import com.alibaba.cloud.dubbo.metadata.RequestMetadata;
+import com.alibaba.cloud.dubbo.metadata.RestMethodMetadata;
+import com.alibaba.cloud.dubbo.metadata.repository.DubboServiceMetadataRepository;
+import com.alibaba.cloud.dubbo.service.DubboGenericServiceExecutionContext;
+import com.alibaba.cloud.dubbo.service.DubboGenericServiceExecutionContextFactory;
+import com.alibaba.cloud.dubbo.service.DubboGenericServiceFactory;
 import org.apache.dubbo.rpc.service.GenericException;
 import org.apache.dubbo.rpc.service.GenericService;
 
@@ -37,17 +43,10 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.PathMatcher;
 import org.springframework.web.util.UriComponents;
 
-import com.alibaba.cloud.dubbo.http.MutableHttpServerRequest;
-import com.alibaba.cloud.dubbo.metadata.DubboRestServiceMetadata;
-import com.alibaba.cloud.dubbo.metadata.RequestMetadata;
-import com.alibaba.cloud.dubbo.metadata.RestMethodMetadata;
-import com.alibaba.cloud.dubbo.metadata.repository.DubboServiceMetadataRepository;
-import com.alibaba.cloud.dubbo.service.DubboGenericServiceExecutionContext;
-import com.alibaba.cloud.dubbo.service.DubboGenericServiceExecutionContextFactory;
-import com.alibaba.cloud.dubbo.service.DubboGenericServiceFactory;
+import static org.springframework.web.util.UriComponentsBuilder.fromUri;
 
 /**
- * Dubbo Transporter {@link ClientHttpRequestInterceptor} implementation
+ * Dubbo Transporter {@link ClientHttpRequestInterceptor} implementation.
  *
  * @author <a href="mailto:mercyblitz@gmail.com">Mercy</a>
  * @see LoadBalancerInterceptor
@@ -150,4 +149,5 @@ public class DubboTransporterInterceptor implements ClientHttpRequestInterceptor
 		requestMetadata.setHeaders(request.getHeaders());
 		return requestMetadata;
 	}
+
 }

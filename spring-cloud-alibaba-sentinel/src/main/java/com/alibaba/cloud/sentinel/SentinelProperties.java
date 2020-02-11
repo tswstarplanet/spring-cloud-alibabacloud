@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +16,21 @@
 
 package com.alibaba.cloud.sentinel;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.core.Ordered;
-import org.springframework.validation.annotation.Validated;
 
 import com.alibaba.cloud.sentinel.datasource.config.DataSourcePropertiesConfiguration;
 import com.alibaba.csp.sentinel.config.SentinelConfig;
 import com.alibaba.csp.sentinel.log.LogBase;
 import com.alibaba.csp.sentinel.transport.config.TransportConfig;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.DeprecatedConfigurationProperty;
+import org.springframework.core.Ordered;
+import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * {@link ConfigurationProperties} for Sentinel.
@@ -53,6 +56,11 @@ public class SentinelProperties {
 	private boolean enabled = true;
 
 	/**
+	 * The process page when the flow control is triggered.
+	 */
+	private String blockPage;
+
+	/**
 	 * Configurations about datasource, like 'nacos', 'apollo', 'file', 'zookeeper'.
 	 */
 	private Map<String, DataSourcePropertiesConfiguration> datasource = new TreeMap<>(
@@ -75,7 +83,7 @@ public class SentinelProperties {
 	private Servlet servlet = new Servlet();
 
 	/**
-	 * Sentinel filter when the application is web, the configuration is effective.
+	 * Sentinel interceptor when the application is web, the configuration is effective.
 	 */
 	private Filter filter = new Filter();
 
@@ -89,9 +97,9 @@ public class SentinelProperties {
 	 */
 	private Log log = new Log();
 
-    /**
-     * Add HTTP method prefix for Sentinel Resource.
-     */
+	/**
+	 * Add HTTP method prefix for Sentinel Resource.
+	 */
 	private Boolean httpMethodSpecify = false;
 
 	public boolean isEager() {
@@ -166,20 +174,31 @@ public class SentinelProperties {
 		this.log = log;
 	}
 
-    public Boolean getHttpMethodSpecify() {
-        return httpMethodSpecify;
-    }
+	public Boolean getHttpMethodSpecify() {
+		return httpMethodSpecify;
+	}
 
-    public void setHttpMethodSpecify(Boolean httpMethodSpecify) {
-        this.httpMethodSpecify = httpMethodSpecify;
-    }
+	public void setHttpMethodSpecify(Boolean httpMethodSpecify) {
+		this.httpMethodSpecify = httpMethodSpecify;
+	}
 
-    public static class Flow {
+	public String getBlockPage() {
+		if (StringUtils.hasText(this.blockPage)) {
+			return this.blockPage;
+		}
+		return this.servlet.getBlockPage();
+	}
+
+	public void setBlockPage(String blockPage) {
+		this.blockPage = blockPage;
+	}
+
+	public static class Flow {
 
 		/**
 		 * The cold factor {@link SentinelConfig#COLD_FACTOR}.
 		 */
-		private String coldFactor = "3";
+		private String coldFactor = SentinelConstants.COLD_FACTOR;
 
 		public String getColdFactor() {
 			return coldFactor;
@@ -198,13 +217,19 @@ public class SentinelProperties {
 		 */
 		private String blockPage;
 
+		@Deprecated
+		@DeprecatedConfigurationProperty(
+				reason = "replaced to SentinelProperties#blockPage.",
+				replacement = SentinelConstants.PROPERTY_PREFIX + ".block-page")
 		public String getBlockPage() {
 			return blockPage;
 		}
 
+		@Deprecated
 		public void setBlockPage(String blockPage) {
 			this.blockPage = blockPage;
 		}
+
 	}
 
 	public static class Metric {
@@ -223,7 +248,7 @@ public class SentinelProperties {
 		 * Charset when sentinel write or search metric file.
 		 * {@link SentinelConfig#CHARSET}
 		 */
-		private String charset = "UTF-8";
+		private String charset = SentinelConstants.CHARSET;
 
 		public String getFileSingleSize() {
 			return fileSingleSize;
@@ -248,6 +273,7 @@ public class SentinelProperties {
 		public void setCharset(String charset) {
 			this.charset = charset;
 		}
+
 	}
 
 	public static class Transport {
@@ -255,7 +281,7 @@ public class SentinelProperties {
 		/**
 		 * Sentinel api port, default value is 8719 {@link TransportConfig#SERVER_PORT}.
 		 */
-		private String port = "8719";
+		private String port = SentinelConstants.API_PORT;
 
 		/**
 		 * Sentinel dashboard address, won't try to connect dashboard when address is
@@ -306,23 +332,24 @@ public class SentinelProperties {
 		public void setClientIp(String clientIp) {
 			this.clientIp = clientIp;
 		}
+
 	}
 
 	public static class Filter {
 
 		/**
-		 * Sentinel filter chain order.
+		 * SentinelWebInterceptor order, will be register to InterceptorRegistry.
 		 */
 		private int order = Ordered.HIGHEST_PRECEDENCE;
 
 		/**
-		 * URL pattern for sentinel filter, default is /*
+		 * URL pattern for SentinelWebInterceptor, default is /*.
 		 */
-		private List<String> urlPatterns;
+		private List<String> urlPatterns = Arrays.asList("/*");
 
 		/**
 		 * Enable to instance
-		 * {@link com.alibaba.csp.sentinel.adapter.servlet.CommonFilter}.
+		 * {@link com.alibaba.csp.sentinel.adapter.spring.webmvc.SentinelWebInterceptor}.
 		 */
 		private boolean enabled = true;
 
@@ -349,6 +376,7 @@ public class SentinelProperties {
 		public void setEnabled(boolean enabled) {
 			this.enabled = enabled;
 		}
+
 	}
 
 	public static class Log {

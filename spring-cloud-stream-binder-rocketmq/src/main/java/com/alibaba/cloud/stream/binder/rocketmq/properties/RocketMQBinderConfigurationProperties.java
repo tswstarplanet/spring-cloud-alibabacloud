@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,13 @@
 
 package com.alibaba.cloud.stream.binder.rocketmq.properties;
 
-import org.apache.rocketmq.common.MixAll;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import java.util.Arrays;
+import java.util.List;
 
 import com.alibaba.cloud.stream.binder.rocketmq.RocketMQBinderConstants;
+import org.apache.rocketmq.common.MixAll;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * @author Timur Valiev
@@ -29,9 +32,10 @@ import com.alibaba.cloud.stream.binder.rocketmq.RocketMQBinderConstants;
 public class RocketMQBinderConfigurationProperties {
 
 	/**
-	 * The name server for rocketMQ, formats: `host:port;host:port`.
+	 * The name server list for rocketMQ.
 	 */
-	private String nameServer = RocketMQBinderConstants.DEFAULT_NAME_SERVER;
+	private List<String> nameServer = Arrays
+			.asList(RocketMQBinderConstants.DEFAULT_NAME_SERVER);
 
 	/**
 	 * The property of "access-key".
@@ -54,11 +58,11 @@ public class RocketMQBinderConfigurationProperties {
 	 */
 	private String customizedTraceTopic = MixAll.RMQ_SYS_TRACE_TOPIC;
 
-	public String getNameServer() {
+	public List<String> getNameServer() {
 		return nameServer;
 	}
 
-	public void setNameServer(String nameServer) {
+	public void setNameServer(List<String> nameServer) {
 		this.nameServer = nameServer;
 	}
 
@@ -93,4 +97,5 @@ public class RocketMQBinderConfigurationProperties {
 	public void setCustomizedTraceTopic(String customizedTraceTopic) {
 		this.customizedTraceTopic = customizedTraceTopic;
 	}
+
 }

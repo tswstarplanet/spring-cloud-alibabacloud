@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright 2013-2018 the original author or authors.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.cloud.dubbo.env;
 
-import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_PROTOCOL;
-import static org.apache.dubbo.config.spring.util.PropertySourcesUtils.getSubProperties;
+package com.alibaba.cloud.dubbo.env;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +22,7 @@ import java.util.Properties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -36,9 +34,12 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_PROTOCOL;
+import static org.apache.dubbo.config.spring.util.PropertySourcesUtils.getPrefixedProperties;
+
 /**
  * Dubbo {@link WebApplicationType#NONE Non-Web Application}
- * {@link EnvironmentPostProcessor}
+ * {@link EnvironmentPostProcessor}.
  *
  * @author <a href="mailto:mercyblitz@gmail.com">Mercy</a>
  */
@@ -87,7 +88,7 @@ public class DubboNonWebApplicationEnvironmentPostProcessor
 		WebApplicationType webApplicationType = application.getWebApplicationType();
 
 		if (!WebApplicationType.NONE.equals(webApplicationType)) { // Just works in
-																	// Non-Web Application
+			// Non-Web Application
 			if (logger.isDebugEnabled()) {
 				logger.debug(
 						"Current application is a Web Application, the process will be ignored.");
@@ -111,10 +112,9 @@ public class DubboNonWebApplicationEnvironmentPostProcessor
 
 	/**
 	 * Reset server port property if it's absent, whose value is configured by
-	 * "dubbbo.protocol.port" or "dubbo.protcols.rest.port"
-	 *
-	 * @param environment
-	 * @param defaultProperties
+	 * "dubbbo.protocol.port" or "dubbo.protcols.rest.port".
+	 * @param environment Spring Environment
+	 * @param defaultProperties defaultProperties
 	 */
 	private void resetServerPort(ConfigurableEnvironment environment,
 			Map<String, Object> defaultProperties) {
@@ -141,8 +141,7 @@ public class DubboNonWebApplicationEnvironmentPostProcessor
 				DEFAULT_PROTOCOL);
 
 		return isRestProtocol(protocol)
-				? environment.getProperty(PROTOCOL_PORT_PROPERTY_NAME)
-				: null;
+				? environment.getProperty(PROTOCOL_PORT_PROPERTY_NAME) : null;
 	}
 
 	private String getRestPortFromProtocolsProperties(
@@ -150,8 +149,8 @@ public class DubboNonWebApplicationEnvironmentPostProcessor
 
 		String restPort = null;
 
-		Map<String, Object> subProperties = getSubProperties(environment,
-				PROTOCOLS_PROPERTY_NAME_PREFIX);
+		Map<String, Object> subProperties = getPrefixedProperties(
+				environment.getPropertySources(), PROTOCOLS_PROPERTY_NAME_PREFIX);
 
 		Properties properties = new Properties();
 
@@ -159,8 +158,8 @@ public class DubboNonWebApplicationEnvironmentPostProcessor
 
 		for (String propertyName : properties.stringPropertyNames()) {
 			if (propertyName.endsWith(PROTOCOL_NAME_PROPERTY_NAME_SUFFIX)) { // protocol
-																				// name
-																				// property
+				// name
+				// property
 				String protocol = properties.getProperty(propertyName);
 				if (isRestProtocol(protocol)) {
 					String beanName = resolveBeanName(propertyName);
@@ -192,8 +191,7 @@ public class DubboNonWebApplicationEnvironmentPostProcessor
 	}
 
 	/**
-	 * Copy from BusEnvironmentPostProcessor#addOrReplace(MutablePropertySources, Map)
-	 *
+	 * Copy from BusEnvironmentPostProcessor#addOrReplace(MutablePropertySources, Map).
 	 * @param propertySources {@link MutablePropertySources}
 	 * @param map Default Dubbo Properties
 	 */
@@ -223,4 +221,5 @@ public class DubboNonWebApplicationEnvironmentPostProcessor
 	public int getOrder() { // Keep LOWEST_PRECEDENCE
 		return LOWEST_PRECEDENCE;
 	}
+
 }

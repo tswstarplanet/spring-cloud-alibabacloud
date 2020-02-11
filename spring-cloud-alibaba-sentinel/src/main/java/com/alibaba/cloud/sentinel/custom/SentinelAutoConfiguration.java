@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,24 @@
 package com.alibaba.cloud.sentinel.custom;
 
 import javax.annotation.PostConstruct;
+
+import com.alibaba.cloud.sentinel.SentinelProperties;
+import com.alibaba.cloud.sentinel.datasource.converter.JsonConverter;
+import com.alibaba.cloud.sentinel.datasource.converter.XmlConverter;
+import com.alibaba.csp.sentinel.annotation.aspectj.SentinelResourceAspect;
+import com.alibaba.csp.sentinel.config.SentinelConfig;
+import com.alibaba.csp.sentinel.init.InitExecutor;
+import com.alibaba.csp.sentinel.log.LogBase;
+import com.alibaba.csp.sentinel.slots.block.authority.AuthorityRule;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
+import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
+import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRule;
+import com.alibaba.csp.sentinel.slots.system.SystemRule;
+import com.alibaba.csp.sentinel.transport.config.TransportConfig;
+import com.alibaba.csp.sentinel.util.AppNameUtil;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,32 +49,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
-import com.alibaba.cloud.sentinel.SentinelProperties;
-import com.alibaba.cloud.sentinel.datasource.converter.JsonConverter;
-import com.alibaba.cloud.sentinel.datasource.converter.XmlConverter;
-import com.alibaba.csp.sentinel.adapter.servlet.config.WebServletConfig;
-import com.alibaba.csp.sentinel.annotation.aspectj.SentinelResourceAspect;
-import com.alibaba.csp.sentinel.config.SentinelConfig;
-import com.alibaba.csp.sentinel.init.InitExecutor;
-import com.alibaba.csp.sentinel.log.LogBase;
-import com.alibaba.csp.sentinel.slots.block.authority.AuthorityRule;
-import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
-import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
-import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRule;
-import com.alibaba.csp.sentinel.slots.system.SystemRule;
-import com.alibaba.csp.sentinel.transport.config.TransportConfig;
-import com.alibaba.csp.sentinel.util.AppNameUtil;
-
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import static com.alibaba.cloud.sentinel.SentinelConstants.BLOCK_PAGE_URL_CONF_KEY;
+import static com.alibaba.csp.sentinel.config.SentinelConfig.setConfig;
 
 /**
  * @author xiaojing
  * @author jiashuai.xie
  * @author <a href="mailto:fangjian0423@gmail.com">Jim</a>
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "spring.cloud.sentinel.enabled", matchIfMissing = true)
 @EnableConfigurationProperties(SentinelProperties.class)
 public class SentinelAutoConfiguration {
@@ -125,8 +126,8 @@ public class SentinelAutoConfiguration {
 			System.setProperty(SentinelConfig.COLD_FACTOR,
 					properties.getFlow().getColdFactor());
 		}
-		if (StringUtils.hasText(properties.getServlet().getBlockPage())) {
-			WebServletConfig.setBlockPage(properties.getServlet().getBlockPage());
+		if (StringUtils.hasText(properties.getBlockPage())) {
+			setConfig(BLOCK_PAGE_URL_CONF_KEY, properties.getBlockPage());
 		}
 
 		// earlier initialize
@@ -145,7 +146,8 @@ public class SentinelAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean
 	@ConditionalOnClass(name = "org.springframework.web.client.RestTemplate")
-	@ConditionalOnProperty(name = "resttemplate.sentinel.enabled", havingValue = "true", matchIfMissing = true)
+	@ConditionalOnProperty(name = "resttemplate.sentinel.enabled", havingValue = "true",
+			matchIfMissing = true)
 	public SentinelBeanPostProcessor sentinelBeanPostProcessor(
 			ApplicationContext applicationContext) {
 		return new SentinelBeanPostProcessor(applicationContext);
@@ -160,10 +162,10 @@ public class SentinelAutoConfiguration {
 	}
 
 	@ConditionalOnClass(ObjectMapper.class)
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class SentinelConverterConfiguration {
 
-		@Configuration
+		@Configuration(proxyBeanMethods = false)
 		protected static class SentinelJsonConfiguration {
 
 			private ObjectMapper objectMapper = new ObjectMapper();
@@ -201,7 +203,7 @@ public class SentinelAutoConfiguration {
 		}
 
 		@ConditionalOnClass(XmlMapper.class)
-		@Configuration
+		@Configuration(proxyBeanMethods = false)
 		protected static class SentinelXmlConfiguration {
 
 			private XmlMapper xmlMapper = new XmlMapper();
@@ -237,6 +239,7 @@ public class SentinelAutoConfiguration {
 			}
 
 		}
+
 	}
 
 }

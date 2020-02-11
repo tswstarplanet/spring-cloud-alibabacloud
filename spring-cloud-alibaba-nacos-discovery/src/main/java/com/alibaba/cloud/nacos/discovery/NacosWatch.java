@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,24 +16,21 @@
 
 package com.alibaba.cloud.nacos.discovery;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.alibaba.cloud.nacos.NacosDiscoveryProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cloud.client.discovery.event.HeartbeatEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-
-import com.alibaba.cloud.nacos.NacosDiscoveryProperties;
-import com.alibaba.nacos.api.naming.listener.EventListener;
 
 /**
  * @author xiaojing
@@ -54,10 +51,6 @@ public class NacosWatch implements ApplicationEventPublisherAware, SmartLifecycl
 
 	private ScheduledFuture<?> watchFuture;
 
-	private Set<String> cacheServices = new HashSet<>();
-
-	private HashMap<String, EventListener> subscribeListeners = new HashMap<>();
-
 	public NacosWatch(NacosDiscoveryProperties properties) {
 		this(properties, getTaskScheduler());
 	}
@@ -67,8 +60,21 @@ public class NacosWatch implements ApplicationEventPublisherAware, SmartLifecycl
 		this.taskScheduler = taskScheduler;
 	}
 
+	/**
+	 * The constructor with {@link NacosDiscoveryProperties} bean and the optional.
+	 * {@link TaskScheduler} bean
+	 * @param properties {@link NacosDiscoveryProperties} bean
+	 * @param taskScheduler the optional {@link TaskScheduler} bean
+	 * @since 2.2.0
+	 */
+	public NacosWatch(NacosDiscoveryProperties properties,
+			ObjectProvider<TaskScheduler> taskScheduler) {
+		this(properties, taskScheduler.getIfAvailable(NacosWatch::getTaskScheduler));
+	}
+
 	private static ThreadPoolTaskScheduler getTaskScheduler() {
 		ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+		taskScheduler.setBeanName("Nacso-Watch-Task-Scheduler");
 		taskScheduler.initialize();
 		return taskScheduler;
 	}
@@ -121,4 +127,5 @@ public class NacosWatch implements ApplicationEventPublisherAware, SmartLifecycl
 				new HeartbeatEvent(this, nacosWatchIndex.getAndIncrement()));
 
 	}
+
 }

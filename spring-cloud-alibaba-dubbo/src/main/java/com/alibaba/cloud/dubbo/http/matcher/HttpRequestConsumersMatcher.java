@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright 2013-2018 the original author or authors.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.alibaba.cloud.dubbo.http.matcher;
 
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.MediaType;
 
 /**
- * {@link HttpRequest} 'Content-Type' header {@link HttpRequestMatcher matcher}
+ * {@link HttpRequest} 'Content-Type' header {@link HttpRequestMatcher matcher}.
  *
  * @author Arjen Poutsma
  * @author Rossen Stoyanchev
@@ -40,9 +40,8 @@ public class HttpRequestConsumersMatcher extends AbstractHttpRequestMatcher {
 
 	/**
 	 * Creates a new instance from 0 or more "consumes" expressions.
-	 *
 	 * @param consumes consumes expressions if 0 expressions are provided, the condition
-	 *     will match to every request
+	 * will match to every request
 	 */
 	public HttpRequestConsumersMatcher(String... consumes) {
 		this(consumes, null);
@@ -53,7 +52,6 @@ public class HttpRequestConsumersMatcher extends AbstractHttpRequestMatcher {
 	 * expressions where the header name is not 'Content-Type' or have no header value
 	 * defined are ignored. If 0 expressions are provided in total, the condition will
 	 * match to every request
-	 *
 	 * @param consumes consumes expressions
 	 * @param headers headers expressions
 	 */
@@ -123,4 +121,5 @@ public class HttpRequestConsumersMatcher extends AbstractHttpRequestMatcher {
 	protected String getToStringInfix() {
 		return " || ";
 	}
+
 }

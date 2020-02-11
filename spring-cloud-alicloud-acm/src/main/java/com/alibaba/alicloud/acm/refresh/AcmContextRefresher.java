@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.alibaba.alicloud.acm.AcmPropertySourceRepository;
+import com.alibaba.alicloud.context.acm.AcmIntegrationProperties;
+import com.alibaba.edas.acm.ConfigService;
+import com.alibaba.edas.acm.listener.ConfigChangeListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.BeansException;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cloud.context.refresh.ContextRefresher;
@@ -33,11 +38,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.util.StringUtils;
-
-import com.alibaba.alicloud.acm.AcmPropertySourceRepository;
-import com.alibaba.alicloud.context.acm.AcmIntegrationProperties;
-import com.alibaba.edas.acm.ConfigService;
-import com.alibaba.edas.acm.listener.ConfigChangeListener;
 
 /**
  * On application start up, AcmContextRefresher add diamond listeners to all application
@@ -57,9 +57,9 @@ public class AcmContextRefresher
 
 	private final AcmRefreshHistory refreshHistory;
 
-	private ApplicationContext applicationContext;
+	private AcmPropertySourceRepository acmPropertySourceRepository;
 
-	private final AcmPropertySourceRepository acmPropertySourceRepository;
+	private ApplicationContext applicationContext;
 
 	private Map<String, ConfigChangeListener> listenerMap = new ConcurrentHashMap<>(16);
 
@@ -82,14 +82,15 @@ public class AcmContextRefresher
 		if (acmIntegrationProperties.getAcmProperties().isRefreshEnabled()) {
 			for (String dataId : acmIntegrationProperties
 					.getApplicationConfigurationDataIds()) {
-				registerDiamondListener(dataId);
+				registerDiamondListener(dataId,
+						acmIntegrationProperties.getAcmProperties().getGroup());
 			}
 		}
 	}
 
-	private void registerDiamondListener(final String dataId) {
-
-		ConfigChangeListener listener = listenerMap.computeIfAbsent(dataId,
+	private void registerDiamondListener(final String dataId, final String group) {
+		String key = acmPropertySourceRepository.getMapKey(dataId, group);
+		ConfigChangeListener listener = listenerMap.computeIfAbsent(key,
 				i -> new ConfigChangeListener() {
 					@Override
 					public void receiveConfigInfo(String configInfo) {
@@ -111,8 +112,7 @@ public class AcmContextRefresher
 								"ACM Refresh, dataId=" + dataId));
 					}
 				});
-		ConfigService.addListener(dataId,
-				acmIntegrationProperties.getAcmProperties().getGroup(), listener);
+		ConfigService.addListener(dataId, group, listener);
 	}
 
 	@Override
@@ -120,4 +120,5 @@ public class AcmContextRefresher
 			throws BeansException {
 		this.applicationContext = applicationContext;
 	}
+
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,15 +18,17 @@ package com.alibaba.cloud.nacos.registry;
 
 import java.util.List;
 
+import com.alibaba.cloud.nacos.NacosDiscoveryProperties;
+import com.alibaba.nacos.api.naming.NamingService;
+import com.alibaba.nacos.api.naming.pojo.Instance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.cloud.client.serviceregistry.Registration;
 import org.springframework.cloud.client.serviceregistry.ServiceRegistry;
 import org.springframework.util.StringUtils;
 
-import com.alibaba.cloud.nacos.NacosDiscoveryProperties;
-import com.alibaba.nacos.api.naming.NamingService;
-import com.alibaba.nacos.api.naming.pojo.Instance;
+import static org.springframework.util.ReflectionUtils.rethrowRuntimeException;
 
 /**
  * @author xiaojing
@@ -54,17 +56,21 @@ public class NacosServiceRegistry implements ServiceRegistry<Registration> {
 		}
 
 		String serviceId = registration.getServiceId();
+		String group = nacosDiscoveryProperties.getGroup();
 
 		Instance instance = getNacosInstanceFromRegistration(registration);
 
 		try {
-			namingService.registerInstance(serviceId, instance);
-			log.info("nacos registry, {} {}:{} register finished", serviceId,
+			namingService.registerInstance(serviceId, group, instance);
+			log.info("nacos registry, {} {} {}:{} register finished", group, serviceId,
 					instance.getIp(), instance.getPort());
 		}
 		catch (Exception e) {
 			log.error("nacos registry, {} register failed...{},", serviceId,
 					registration.toString(), e);
+			// rethrow a RuntimeException if the registration is failed.
+			// issue : https://github.com/alibaba/spring-cloud-alibaba/issues/1132
+			rethrowRuntimeException(e);
 		}
 	}
 
@@ -80,9 +86,10 @@ public class NacosServiceRegistry implements ServiceRegistry<Registration> {
 
 		NamingService namingService = nacosDiscoveryProperties.namingServiceInstance();
 		String serviceId = registration.getServiceId();
+		String group = nacosDiscoveryProperties.getGroup();
 
 		try {
-			namingService.deregisterInstance(serviceId, registration.getHost(),
+			namingService.deregisterInstance(serviceId, group, registration.getHost(),
 					registration.getPort(), nacosDiscoveryProperties.getClusterName());
 		}
 		catch (Exception e) {
@@ -136,8 +143,9 @@ public class NacosServiceRegistry implements ServiceRegistry<Registration> {
 					.getAllInstances(serviceName);
 			for (Instance instance : instances) {
 				if (instance.getIp().equalsIgnoreCase(nacosDiscoveryProperties.getIp())
-						&& instance.getPort() == nacosDiscoveryProperties.getPort())
+						&& instance.getPort() == nacosDiscoveryProperties.getPort()) {
 					return instance.isEnabled() ? "UP" : "DOWN";
+				}
 			}
 		}
 		catch (Exception e) {
@@ -153,6 +161,7 @@ public class NacosServiceRegistry implements ServiceRegistry<Registration> {
 		instance.setWeight(nacosDiscoveryProperties.getWeight());
 		instance.setClusterName(nacosDiscoveryProperties.getClusterName());
 		instance.setMetadata(registration.getMetadata());
+
 		return instance;
 	}
 
